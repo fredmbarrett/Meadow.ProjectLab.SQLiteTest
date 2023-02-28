@@ -53,7 +53,7 @@ namespace SQLiteTest.Models
         {
             var sb = new StringBuilder()
                 .Append($"Id: {Id}; ")
-                .Append($"Date: {ReadingDate.ToString("f")}; ")
+                .Append($"Date: {ReadingDate.ToString("MM/dd/yy HH:mm:ss")}; ")
                 .Append($"ChannelData: ");
 
             int channel = 0;

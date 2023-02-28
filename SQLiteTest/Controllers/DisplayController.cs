@@ -101,8 +101,8 @@ namespace SQLiteTest.Controllers
             DrawStatus("Uptime:", Uptime.ToString(@"d\.hh\:mm"), Color.White, offset + (lineY * line++));
             DrawStatus("S/N:", DeviceSerialNumber, Color.White, offset + (lineY * line++));
             DrawStatus("Memory:", TotalMemUsage, Color.White, offset + (lineY * line++));
-            DrawStatus($"SenStatus:", "{SensorStatus}", Color.White, offset + (lineY * line++));
-            DrawStatus($"AppStatus:", "{AppStatus}", Color.White, offset + (lineY * line++));
+            DrawStatus($"SenStatus:", $"{SensorStatus}", Color.White, offset + (lineY * line++));
+            DrawStatus($"AppStatus:", $"{AppStatus}", Color.White, offset + (lineY * line++));
 
             _graphics.Show();
         }
