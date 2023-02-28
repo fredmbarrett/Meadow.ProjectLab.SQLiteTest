@@ -17,15 +17,15 @@ using SQLiteTest.Scheduler;
 using System.Collections.Generic;
 using SQLiteTest.Controllers;
 using System.Linq;
+using SQLiteTest.Data;
 
 namespace SQLiteTest
 {
     // Change F7FeatherV2 to F7FeatherV1 for V1.x boards
     public class MeadowApp : App<F7FeatherV2>
     {
-        SQLiteConnection Database;
         IProjectLabHardware projectLab;
-        CancellationTokenSource cts = new CancellationTokenSource();
+        IDataContext dataContext;
 
         LedController leds;
         DisplayController display;
@@ -39,13 +39,20 @@ namespace SQLiteTest
 
             try
             {
+                // Select the database type to create using the enum
+                CreateDataContext(DataContextType.SQLite);
+
+                // Initialize the onboard project lab sensors
                 sensors = SensorsController.Instance;
                 sensors.Initialize(projectLab);
 
-                ConfigureDatabase();
+                // Create the schedule to dump data (simulates call-in to servers)
                 CreateDataDumpSchedule();
+
+                // Create the schedule to log sensor data
                 CreateDataLogSchedules();
 
+                // Display app state and run program
                 display.AppStatus = "RUN";
                 leds.SetColor(Color.Green);
             }
@@ -53,6 +60,7 @@ namespace SQLiteTest
             {
                 display.AppStatus = "ERROR";
                 Log.Error(ex, "MeadowApp.Run() error");
+                throw;
             }
 
             return base.Run();
@@ -73,64 +81,21 @@ namespace SQLiteTest
             return base.Initialize();
         }
 
-        #region Create / Delete Database Methods
-
-        void ConfigureDatabase()
-        {
-            Log.Debug("Entering ConfigureDatabase()");
-
-            Database = CreateDbConnection();
-            Database.CreateTable<SensorReading>(CreateFlags.None);
-
-            Log.Debug("Leaving ConfigureDatabase()");
-        }
-
         /// <summary>
-        /// Creates an data connection to SQLite
-        /// Advanced settings assist in controlling thread concurrency 
-        /// (use at your own risk :-)
+        /// Creates a data context of DataContextType
+        /// for storage and testing
         /// </summary>
-        SQLiteConnection CreateDbConnection()
+        /// <param name="dataContextType">Enum selecting data context type to create</param>
+        void CreateDataContext(DataContextType dataContextType)
         {
-            const bool USE_ADVANCED_SETTINGS = false;
-
-            SQLiteConnection cn;
-            string dbPath = GetDatabaseFilename();
-
-            if (USE_ADVANCED_SETTINGS)
-            {
-                // set for multi-threading
-                SQLite3.Config(SQLite3.ConfigOption.Serialized);
-
-                var flags = SQLiteOpenFlags.Create |
-                    SQLiteOpenFlags.ReadWrite |
-                    SQLiteOpenFlags.FullMutex;
-
-                cn = new SQLiteConnection(dbPath, flags);
-            }
+            // Allows testing SQLite or simple in-memory
+            // database for troubleshooting memory/thread issues
+            // associated with SQLite and those not related
+            if (dataContextType.Equals(DataContextType.SQLite))
+                dataContext = new SQLiteDataContext();
             else
-            {
-                cn = new SQLiteConnection(dbPath);
-            }
-
-            return cn;
+                dataContext = new InMemoryDataContext();
         }
-
-        /// <summary>
-        /// Gets the database filename from the app settings
-        /// and creates the path information that points to 
-        /// the Meadow /data folder
-        /// </summary>
-        /// <returns></returns>
-        string GetDatabaseFilename()
-        {
-            var dbName = "SqliteData.db";
-            var dbPath = Path.Combine(MeadowOS.FileSystem.DataDirectory, dbName);
-            Resolver.Log.Debug($"...database filename is {dbPath}");
-            return dbPath;
-        }
-
-        #endregion Create / Delete Database Methods
 
         #region Create Data Log Schedule Methods
 
@@ -154,10 +119,7 @@ namespace SQLiteTest
 
                 if (reading != null)
                 {
-                    Log.Debug("...Entering Database.Insert");
-                    var entity = reading.ToDataEntity();
-                    Database.Insert(entity);
-                    Log.Debug("...Leaving Database.Insert");
+                    dataContext.InsertSensorReading(reading);
                 }
 
                 Log.Debug("Leaving Data Log Task");
@@ -186,10 +148,11 @@ namespace SQLiteTest
             {
                 Log.Debug("Entering Data Dump Task");
 
-                var readings = Database.Table<SensorReading>().ToList();
+                var readings = dataContext.GetSensorReadings();
 
                 PrintSensorReadings(readings);
-                DeleteSensorReadings(readings);
+
+                dataContext.DeleteSensorReadings(readings);
 
                 Log.Debug("Leaving Data Dump Task");
             });
@@ -197,19 +160,10 @@ namespace SQLiteTest
             Log.Debug("Leaving CreateDataDumpSchedule()");
         }
 
-        private void DeleteSensorReadings(List<SensorReading> readings)
-        {
-            Log.Debug("Deleting Sensor Readings");
-            var ids = string.Join(",", readings.Select(p => p.Id).ToList());
-            var sql = $"DELETE FROM SensorReading WHERE Id IN ({ids});";
-            int count = 0;
-            lock (Database)
-            {
-                count = Database.Execute(sql);
-            }
-            Log.Debug($"Deleted {count} Sensor Readings");
-        }
-
+        /// <summary>
+        /// Displays list of collected SensorReadings since last data dump
+        /// </summary>
+        /// <param name="readings">List of sensor readings to display</param>
         void PrintSensorReadings(List<SensorReading> readings)
         {
             Console.WriteLine($"\r dumping {readings.Count} sensor readings:");
