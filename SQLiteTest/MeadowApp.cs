@@ -87,11 +87,32 @@ namespace SQLiteTest
 
         /// <summary>
         /// Creates an data connection to SQLite
+        /// Advanced settings assist in controlling thread concurrency 
+        /// (use at your own risk :-)
         /// </summary>
         SQLiteConnection CreateDbConnection()
         {
+            const bool USE_ADVANCED_SETTINGS = false;
+
+            SQLiteConnection cn;
             string dbPath = GetDatabaseFilename();
-            var cn = new SQLiteConnection(dbPath);
+
+            if (USE_ADVANCED_SETTINGS)
+            {
+                // set for multi-threading
+                SQLite3.Config(SQLite3.ConfigOption.Serialized);
+
+                var flags = SQLiteOpenFlags.Create |
+                    SQLiteOpenFlags.ReadWrite |
+                    SQLiteOpenFlags.FullMutex;
+
+                cn = new SQLiteConnection(dbPath, flags);
+            }
+            else
+            {
+                cn = new SQLiteConnection(dbPath);
+            }
+
             return cn;
         }
 
@@ -181,8 +202,11 @@ namespace SQLiteTest
             Log.Debug("Deleting Sensor Readings");
             var ids = string.Join(",", readings.Select(p => p.Id).ToList());
             var sql = $"DELETE FROM SensorReading WHERE Id IN ({ids});";
-
-            var count = Database.Execute(sql);
+            int count = 0;
+            lock (Database)
+            {
+                count = Database.Execute(sql);
+            }
             Log.Debug($"Deleted {count} Sensor Readings");
         }
 
