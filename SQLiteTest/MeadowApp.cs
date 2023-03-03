@@ -40,7 +40,7 @@ namespace SQLiteTest
             try
             {
                 // Select the database type to create using the enum
-                CreateDataContext(DataContextType.SQLite);
+                CreateDataContext(DataContextType.InMemory);
 
                 // Initialize the onboard project lab sensors
                 sensors = SensorsController.Instance;
@@ -123,6 +123,7 @@ namespace SQLiteTest
                 }
 
                 Log.Debug("Leaving Data Log Task");
+                GC.Collect();
             });
 
             Log.Debug("Leaving CreateDataLogSchedules()");
@@ -158,6 +159,7 @@ namespace SQLiteTest
             });
 
             Log.Debug("Leaving CreateDataDumpSchedule()");
+            GC.Collect();
         }
 
         /// <summary>
