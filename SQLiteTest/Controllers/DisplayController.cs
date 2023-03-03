@@ -100,7 +100,8 @@ namespace SQLiteTest.Controllers
             DrawStatus("Time:", DeviceCurrentTime, Color.White, offset + (lineY * line++));
             DrawStatus("Uptime:", Uptime.ToString(@"d\.hh\:mm"), Color.White, offset + (lineY * line++));
             DrawStatus("S/N:", DeviceSerialNumber, Color.White, offset + (lineY * line++));
-            DrawStatus("Memory:", TotalMemUsage, Color.White, offset + (lineY * line++));
+            DrawStatus("DbType:", DatabaseType, Color.White, offset + (lineY * line++));
+            DrawStatus("MemUsage:", TotalMemUsage, Color.White, offset + (lineY * line++));
             DrawStatus($"SenStatus:", $"{SensorStatus}", Color.White, offset + (lineY * line++));
             DrawStatus($"AppStatus:", $"{AppStatus}", Color.White, offset + (lineY * line++));
 
@@ -143,6 +144,19 @@ namespace SQLiteTest.Controllers
             }
         }
         string sensorStatus = "";
+
+        /// <summary>
+        /// Which data context type is in use
+        /// </summary>
+        public string DatabaseType
+        {
+            get => databaseType;
+            set
+            {
+                databaseType = value;
+            }
+        }
+        string databaseType = "";
 
         /// <summary>
         /// Display current device time

@@ -40,7 +40,7 @@ namespace SQLiteTest
             try
             {
                 // Select the database type to create using the enum
-                CreateDataContext(DataContextType.InMemory);
+                CreateDataContext(DataContextType.SQLite);
 
                 // Initialize the onboard project lab sensors
                 sensors = SensorsController.Instance;
@@ -92,9 +92,15 @@ namespace SQLiteTest
             // database for troubleshooting memory/thread issues
             // associated with SQLite and those not related
             if (dataContextType.Equals(DataContextType.SQLite))
+            {
                 dataContext = new SQLiteDataContext();
+                display.DatabaseType = "SQLite";
+            }
             else
+            {
                 dataContext = new InMemoryDataContext();
+                display.DatabaseType = "Memory";
+            }
         }
 
         #region Create Data Log Schedule Methods
